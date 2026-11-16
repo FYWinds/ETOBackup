@@ -13,15 +13,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Replacing the world with a snapshot. A dedicated server never does it while it runs: it writes a request into the
- * repository ({@code pending-rollback}) and stops, and {@link #apply} carries the request out from the start script,
- * before the game starts and while nothing has the world open:
+ * Replacing the world with a snapshot. The running game never does it under a loaded world: it writes a request into
+ * the repository ({@code pending-rollback}), and {@link #apply} carries the request out while nothing has the world
+ * open. A dedicated server stops for it and applies the request when it is started again, before the world is loaded
+ * ({@link PendingRollbacks}); in single player the game applies it once the world is closed and its server has
+ * stopped. The same can be done offline, before starting the server:
  *
  * <pre>
  * java -cp mods/etobackup-&lt;version&gt;.jar fyi.fyw.etobackup.BackupCli &lt;repository&gt; apply-pending &lt;server directory&gt;
  * </pre>
- *
- * In single player the game itself calls {@link #apply} once the world is closed and its server has stopped.
  *
  * The steps, any of which may be interrupted and is then picked up by the next run:
  * <ol>
@@ -86,7 +86,6 @@ public final class Rollback {
 
     private static final String PENDING = "pending-rollback";
     private static final String LAST = "last-rollback";
-    private static final String APPLIER = "applier-ran";
     private static final String SWAP = "swap";
 
     private Rollback() {}
@@ -122,9 +121,16 @@ public final class Rollback {
         }
     }
 
+    /** @return the world directory a request that is not carried out yet asks to replace, or null without one */
+    public static String pendingWorld(BackupStore store) throws IOException {
+        Map<String, String> request = read(store.dir()
+            .resolve(PENDING));
+        return request == null ? null : request.getOrDefault("world", "");
+    }
+
     /**
-     * Carries out the request, if there is one. An exception means the world may be half replaced: the server must
-     * not start, and running this again goes on where it stopped.
+     * Carries out the request, if there is one. An exception means the world may be half replaced: it must not be
+     * loaded, and running this again goes on where it stopped.
      *
      * @return how it ended, or null when there was no request
      */
@@ -175,40 +181,6 @@ public final class Rollback {
         }
         deleteTree(staged);
         return finish(store, request, true, "");
-    }
-
-    /**
-     * For the server, which finds a request still there when it starts: the start script did not run {@link #apply}.
-     * The request is dropped so that a later start does not carry it out long after it was made.
-     *
-     * @return what was recorded, or null when there was no request
-     * @throws IllegalStateException when the world is half replaced
-     */
-    public static Outcome dropUnapplied(BackupStore store) throws IOException {
-        Map<String, String> request = read(store.dir()
-            .resolve(PENDING));
-        if (request == null) return null;
-        if (SWAP.equals(request.get("step"))) {
-            throw new IllegalStateException(
-                "A world rollback was interrupted halfway. Run BackupCli apply-pending before starting the server.");
-        }
-        return finish(store, request, false, "the start script does not run BackupCli apply-pending");
-    }
-
-    /** Called by the start script's step on every start, so that the server can tell the step is there. */
-    public static void markApplierRan(BackupStore store) throws IOException {
-        Files.createDirectories(store.dir());
-        Files.write(
-            store.dir()
-                .resolve(APPLIER),
-            new byte[0]);
-    }
-
-    /** Whether the start script's step ran before this start of the server; true only the first time it is asked. */
-    public static boolean takeApplierRan(BackupStore store) throws IOException {
-        return Files.deleteIfExists(
-            store.dir()
-                .resolve(APPLIER));
     }
 
     /** Deletes the world a rollback replaced, once the server runs on the new one. */

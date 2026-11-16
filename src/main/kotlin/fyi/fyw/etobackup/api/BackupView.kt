@@ -49,9 +49,9 @@ object BackupView {
     fun snapshotNow() = BackupClient.act(BackupClient.ACTION_NOW)
 
     /**
-     * Asks for the world to go back to the snapshot [name], after the server's countdown. Needs [State.canManage]
-     * and [State.rollbackReady]. Ask the player to confirm first: everything since that snapshot is undone (it can be
-     * undone in turn, see [undo]).
+     * Asks for the world to go back to the snapshot [name], after the server's countdown. Needs [State.canManage].
+     * Ask the player to confirm first: everything since that snapshot is undone (it can be undone in turn, see
+     * [undo]).
      */
     @JvmStatic
     fun rollback(name: String) = BackupClient.act(BackupClient.ACTION_ROLLBACK, name)

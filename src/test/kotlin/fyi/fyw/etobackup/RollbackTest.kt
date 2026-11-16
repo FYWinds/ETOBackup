@@ -137,15 +137,19 @@ class RollbackTest {
     }
 
     @Test
-    fun `the server drops a request the start script did not carry out, unless the world is half replaced`() {
-        request()
+    fun `a swap that cannot move the world throws, keeps the request and is finished by the next run`() {
+        interrupted(0)
+        val obstacle = repository.resolve("rollback/old/in-the-way")
+        obstacle.parent.createDirectories()
+        obstacle.writeText("x")
 
-        assertThat(Rollback.dropUnapplied(store).ok()).isFalse()
+        assertThatThrownBy { Rollback.apply(server, store) }.isInstanceOf(java.io.IOException::class.java)
 
-        assertThat(Rollback.apply(server, store)).isNull()
         assertThat(content("World")).isEqualTo(now)
-        interrupted(1)
-        assertThatThrownBy { Rollback.dropUnapplied(store) }.isInstanceOf(IllegalStateException::class.java)
+        assertThat(Rollback.pendingWorld(store)).isEqualTo("World")
+        obstacle.deleteExisting()
+        obstacle.parent.deleteExisting()
+        assertRolledBack(Rollback.apply(server, store))
     }
 
     @Test

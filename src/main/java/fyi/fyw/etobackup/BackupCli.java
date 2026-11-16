@@ -16,10 +16,10 @@ import java.util.List;
  * </pre>
  *
  * {@code list}, {@code verify} and {@code restore} only read the repository, so they are safe next to a running
- * server. {@code apply-pending} belongs in the server's start script, before the line that starts the game: it
- * carries out a world rollback asked for in the game ({@link Rollback}) and does nothing when none was. It must
- * never run while the server does. When it exits with an error the world may be half replaced and the server must
- * not start; running it again goes on where it stopped.
+ * server. {@code apply-pending} carries out a world rollback asked for in the game ({@link Rollback}) and does
+ * nothing when none was; the server does the same by itself when it starts, so running it is optional. It must never
+ * run while the server does. When it exits with an error the world may be half replaced and the server must not
+ * start; running it again goes on where it stopped.
  */
 public final class BackupCli {
 
@@ -55,7 +55,6 @@ public final class BackupCli {
             case "apply-pending" -> {
                 if (args.length != 3) usage();
                 Rollback.Outcome outcome = Rollback.apply(Paths.get(args[2]), store);
-                Rollback.markApplierRan(store);
                 if (outcome == null) return;
                 System.out.println(
                     outcome.ok() ? "World rolled back to snapshot " + outcome.target()

@@ -11,16 +11,12 @@ class State(
     val repository: String,
     /**
      * The world is a single-player world (an integrated server, also when opened to LAN): a rollback closes the world,
-     * puts it back and opens it again instead of restarting a server.
+     * puts it back and opens it again. Otherwise the server stops for a rollback and puts the world back when it is
+     * started again.
      */
     val singlePlayer: Boolean,
     /** This player may take snapshots, roll back, undo and cancel (OP level 2, or the owner of a single-player world). */
     val canManage: Boolean,
-    /**
-     * A rollback can be carried out: always in single player; on a dedicated server only when its start script runs
-     * `BackupCli apply-pending`. Without it the server refuses rollbacks.
-     */
-    val rollbackReady: Boolean,
     /** The rollback that is counting down or being carried out, or null. */
     val pending: Pending?,
     /** How the last rollback ended, or null when there never was one. */
