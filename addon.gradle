@@ -1,0 +1,31 @@
+apply plugin: 'org.jetbrains.kotlin.jvm'
+
+// The Java tasks target 17 (enableModernJavaSyntax = modern, forceToolchainVersion = 17); Kotlin defaults to 1.8.
+['compileKotlin', 'compileTestKotlin'].each { name ->
+    tasks.named(name).configure {
+        compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+// relocateShadowedDependencies stays off: zstd-jni's JNI symbols are bound to its own package.
+tasks.named('shadowJar').configure {
+    exclude('module-info.class', 'META-INF/versions/*/module-info.class')
+    // zstd-jni ships natives for 18 platforms (7.3 MB); keep the x64 and arm64 builds for Windows, Linux and macOS.
+    exclude('aix/**', 'freebsd/**', 'win/x86/**')
+    exclude('linux/arm/**', 'linux/i386/**', 'linux/loongarch64/**', 'linux/mips64/**', 'linux/ppc64/**',
+        'linux/ppc64le/**', 'linux/riscv64/**', 'linux/s390x/**')
+}
+
+afterEvaluate {
+    // RFG doesn't configure useJUnitPlatform(); without it Gradle uses the JUnit 4
+    // runner and can't discover JUnit 5 tests. Gradle 9 then fails with
+    // failOnNoDiscoveredTests. Configure it explicitly here.
+    tasks.named('test').configure {
+        useJUnitPlatform()
+        // The classes are Java 17 bytecode; RFG would run the tests on the Java 8 launcher.
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(17)
+            vendor = JvmVendorSpec.AZUL
+        }
+    }
+}

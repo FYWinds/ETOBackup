@@ -1,0 +1,17 @@
+// Add your dependencies here
+
+dependencies {
+    api('com.github.GTNewHorizons:Forgelin:2.0.3-GTNH')
+
+    // Bundled into the jar, unrelocated: the JNI symbol names depend on its package.
+    shadowImplementation('com.github.luben:zstd-jni:1.5.7-5')
+
+    compileOnly('org.jetbrains:annotations:26.0.2')
+
+    // Testing
+    testImplementation(platform('org.junit:junit-bom:5.11.4'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine')
+    testImplementation('org.assertj:assertj-core:3.24.2')
+}

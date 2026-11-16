@@ -1,0 +1,20 @@
+[
+  {
+    "modid": "${modId}",
+    "name": "${modName}",
+    "description": "Incremental world backups and one-click rollback. The server stores only what changed since the last snapshot; a rollback puts the world back to any snapshot and can be undone.",
+    "version": "${modVersion}",
+    "mcversion": "${minecraftVersion}",
+    "url": "https://github.com/FYWinds/ETOBackup",
+    "updateUrl": "",
+    "authorList": [
+      "FYWinds"
+    ],
+    "credits": "Bundles zstd-jni by Luben Karavelov (BSD 2-Clause, see LICENSE.zstd-jni). Set up with the GT New Horizons build convention.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": [
+      "forgelin"
+    ]
+  }
+]
