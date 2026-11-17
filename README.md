@@ -146,10 +146,18 @@ is missing). The jars are in `build/libs/`. A tag pushed to GitHub is built and 
 - [zstd-jni](https://github.com/luben/zstd-jni) by Luben Karavelov, with [Zstandard](https://github.com/facebook/zstd)
   by Meta: bundled unmodified in the jar for compressing the repository (BSD 2-Clause, see `LICENSE.zstd-jni` and
   `NOTICE`).
+- [ServerUtilities](https://github.com/GTNewHorizons/ServerUtilities): the way a snapshot is taken follows its
+  backup: save inside the server process, wait until the queued chunks are written, and keep chunks loaded while the
+  files are read.
+- [BorgBackup](https://www.borgbackup.org/), [restic](https://restic.net/) and [Kopia](https://kopia.io/): the
+  repository of deduplicated, hashed slices follows the idea these tools are built on; the design was measured against
+  them, and an earlier prototype used borg.
 - [GT New Horizons](https://github.com/GTNewHorizons): the
   [build convention](https://github.com/GTNewHorizons/GTNHGradle) and
   [ExampleMod](https://github.com/GTNewHorizons/ExampleMod1.7.10) this project is set up from, Forgelin, and the
   release workflows.
+
+Apart from the bundled zstd-jni, no code of these projects is included.
 
 ## License
 
@@ -261,7 +269,11 @@ java -cp mods/etobackup-<version>.jar fyi.fyw.etobackup.BackupCli eto-backups ap
 ### 致谢
 
 - [zstd-jni](https://github.com/luben/zstd-jni)（Luben Karavelov，内含 Meta 的 Zstandard）：原样打包在 jar 里，用来压缩仓库（BSD 2-Clause，见 `LICENSE.zstd-jni` 和 `NOTICE`）。
+- [ServerUtilities](https://github.com/GTNewHorizons/ServerUtilities)：做快照的办法参考了它的备份：在服务端进程里存盘，等排队的区块写完，读文件期间不卸载区块。
+- [BorgBackup](https://www.borgbackup.org/)、[restic](https://restic.net/)、[Kopia](https://kopia.io/)：按哈希切片去重的仓库沿用了这类工具的思路；设计时和它们对比过，早期的原型用的是 borg。
 - [GT New Horizons](https://github.com/GTNewHorizons)：本项目基于它的[构建约定](https://github.com/GTNewHorizons/GTNHGradle)和 [ExampleMod](https://github.com/GTNewHorizons/ExampleMod1.7.10) 搭建，还有 Forgelin 和发布用的工作流。
+
+除了打包的 zstd-jni，没有包含以上项目的代码。
 
 ### 许可
 

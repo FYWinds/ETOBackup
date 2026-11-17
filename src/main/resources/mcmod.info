@@ -10,7 +10,7 @@
     "authorList": [
       "FYWinds"
     ],
-    "credits": "Bundles zstd-jni by Luben Karavelov (BSD 2-Clause, see LICENSE.zstd-jni). Set up with the GT New Horizons build convention.",
+    "credits": "Bundles zstd-jni by Luben Karavelov (BSD 2-Clause, see LICENSE.zstd-jni). Snapshot procedure after ServerUtilities' backup; repository idea after borg, restic and kopia. Set up with the GT New Horizons build convention.",
     "logoFile": "",
     "screenshots": [],
     "dependencies": [
