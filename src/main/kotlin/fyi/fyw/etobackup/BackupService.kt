@@ -65,8 +65,11 @@ object BackupService {
     /** The countdown of a rollback when nobody but the player who asked is online. */
     private const val SOLO_DELAY_SECONDS = 5
 
-    /** Seconds left at which the countdown is said again. */
-    private val REMIND_AT = setOf(60, 30, 10, 5, 4, 3, 2, 1)
+    /**
+     * Seconds left at which the countdown is said again in the chat, besides when it starts. The backup screen shows
+     * the seconds as they run.
+     */
+    private val REMIND_AT = setOf(10, 5)
 
     /** Ticks between the players being sent away and the server stopping, for them to be told why. */
     private const val STOP_DELAY_TICKS = 20
@@ -392,7 +395,7 @@ object BackupService {
     private fun countdown(server: MinecraftServer) {
         val run = rollback ?: return
         if (run.phase == Phase.SAVING || run.phase == Phase.CLOSING || --run.ticksLeft > 0) {
-            if (run.phase == Phase.COUNTING && run.ticksLeft % 20 == 0 && run.ticksLeft / 20 in REMIND_AT) remind(run)
+            if (run.phase == Phase.COUNTING && remindsAt(run.ticksLeft)) remind(run)
             return
         }
         if (run.phase == Phase.STOPPING) return server.initiateShutdown()
@@ -402,6 +405,21 @@ object BackupService {
                 onServerThread { stopForRollback(run, made) }
             },
         )
+    }
+
+    /**
+     * Whether the chat says the countdown again with [ticksLeft] ticks left. Ticks are counted down before this is
+     * asked, so a countdown that starts at one of these seconds is not said twice.
+     */
+    internal fun remindsAt(ticksLeft: Int): Boolean = ticksLeft % 20 == 0 && ticksLeft / 20 in REMIND_AT
+
+    /** The kick message's lang key for a rollback to a snapshot [age] old, and the number it names. */
+    internal fun kickWording(age: Duration): Pair<String, Long> = when {
+        age.toMinutes() < 1 -> "etobackup.kick.now" to 0L
+        age.toMinutes() == 1L -> "etobackup.kick.minute" to 1L
+        age.toHours() < 2 -> "etobackup.kick.minutes" to age.toMinutes()
+        age.toDays() < 2 -> "etobackup.kick.hours" to age.toHours()
+        else -> "etobackup.kick.days" to age.toDays()
     }
 
     /** The server thread, once the snapshot of the world as it is now is stored ([made]; null: it could not be). */
@@ -431,13 +449,7 @@ object BackupService {
             "Stopping the server; it puts the world back to snapshot {} (asked by {}) when it is started again; {} is the world as it is now",
             run.target, run.by, made.name,
         )
-        val age = Duration.between(Manifest.timeOf(run.target), Instant.now())
-        val (unit, amount) = when {
-            age.toHours() < 2 -> "minutes" to age.toMinutes()
-            age.toDays() < 2 -> "hours" to age.toHours()
-            else -> "days" to age.toDays()
-        }
-        val key = "etobackup.kick.$unit"
+        val (key, amount) = kickWording(Duration.between(Manifest.timeOf(run.target), Instant.now()))
         for (player in server.configurationManager.playerEntityList.filterIsInstance<EntityPlayerMP>()) {
             val reason: IChatComponent =
                 if (BackupNet.has(player)) ChatComponentTranslation(key, run.by, amount.toString())
