@@ -76,6 +76,9 @@ object BackupService {
 
     /** For this long after a rollback, a player who joins is told how it ended. */
     private const val RESULT_SHOWN_MILLIS = 10 * 60_000L
+
+    /** How long the result of a rollback waits for a joining player's hello before it goes out in English. */
+    private const val HELLO_WAIT_TICKS = 100
     private const val MSG = "etobackup.msg"
 
     /** A single-player world closes for a rollback: [repository] holds the request, `saves/[folder]` is the world. */
@@ -86,6 +89,9 @@ object BackupService {
     var closeForRollback: ((Closing) -> Unit)? = null
 
     private class Slice(val hash: String, val data: ByteArray)
+
+    /** A player who joined and is still to be told how the last rollback ended. */
+    private class Greeting(val player: EntityPlayerMP, var ticksLeft: Int)
 
     /** The end of a capture; [result] is null when it failed and what was written is to be dropped. */
     private class End(val result: Capture.Result?, val summary: String)
@@ -132,6 +138,9 @@ object BackupService {
     private val busy = AtomicBoolean()
     private val requests = ConcurrentLinkedQueue<Order>()
     private val serverTasks = ConcurrentLinkedQueue<Runnable>()
+
+    /** Server thread only. */
+    private val greetings = ArrayList<Greeting>()
 
     /** A player was online since the last capture. */
     @Volatile
@@ -245,6 +254,7 @@ object BackupService {
         repository = ""
         requests.clear()
         serverTasks.clear()
+        greetings.clear()
         busy.set(false)
         stopped.countDown()
     }
@@ -271,7 +281,8 @@ object BackupService {
     /** OP level 4, or the owner of a single-player world. */
     fun mayAdminister(sender: ICommandSender): Boolean = sender.canCommandSenderUseCommand(4, BackupCommand.commandName) || isOwner(sender)
 
-    private fun isOwner(sender: ICommandSender): Boolean {
+    /** The owner of a single-player world, whose client runs in this game and so has ETOBackup. */
+    fun isOwner(sender: ICommandSender): Boolean {
         val server = MinecraftServer.getServer() ?: return false
         return !server.isDedicatedServer && sender is EntityPlayerMP && sender.commandSenderName == server.serverOwner
     }
@@ -466,12 +477,40 @@ object BackupService {
         run.phase = Phase.STOPPING
     }
 
+    /**
+     * Tells a joining player how a recent rollback ended. A client with ETOBackup says hello only after joining, so
+     * the line waits for that hello ([greeted]) to go out in the player's language, and for a few seconds at most.
+     */
     @SubscribeEvent
     fun onLogin(event: PlayerEvent.PlayerLoggedInEvent) {
-        val last = lastRollback ?: return
-        if (System.currentTimeMillis() - last.time() > RESULT_SHOWN_MILLIS) return
-        if (last.ok()) BackupChat.tell(event.player, "$MSG.done", last.by(), last.target())
-        else BackupChat.tell(event.player, "$MSG.not_done", last.by(), last.target(), last.message())
+        val player = event.player as? EntityPlayerMP ?: return
+        if (lastRollbackResult() == null) return
+        if (BackupNet.has(player)) tellLastRollback(player) else greetings += Greeting(player, HELLO_WAIT_TICKS)
+    }
+
+    /** [player]'s client said hello. Server thread. */
+    fun greeted(player: EntityPlayerMP) {
+        val waiting = greetings.firstOrNull { it.player === player } ?: return
+        greetings -= waiting
+        tellLastRollback(player)
+    }
+
+    private fun lastRollbackResult(): Rollback.Outcome? =
+        lastRollback?.takeIf { System.currentTimeMillis() - it.time() <= RESULT_SHOWN_MILLIS }
+
+    private fun tellLastRollback(player: EntityPlayerMP) {
+        val last = lastRollbackResult() ?: return
+        if (last.ok()) BackupChat.tell(player, "$MSG.done", last.by(), last.target())
+        else BackupChat.tell(player, "$MSG.not_done", last.by(), last.target(), last.message())
+    }
+
+    /** Sends the lines whose hello did not come in time, in English. */
+    private fun greetLate(server: MinecraftServer) {
+        if (greetings.isEmpty()) return
+        val online = server.configurationManager.playerEntityList
+        val due = greetings.filter { --it.ticksLeft <= 0 || it.player !in online }
+        greetings -= due.toSet()
+        for (greeting in due) if (greeting.player in online) tellLastRollback(greeting.player)
     }
 
     fun verify(sender: ICommandSender, name: String) = command(sender) { store ->
@@ -509,8 +548,9 @@ object BackupService {
     fun onServerTick(event: TickEvent.ServerTickEvent) {
         if (event.phase == TickEvent.Phase.START) return BackupGate.tickStarted()
         while (true) (serverTasks.poll() ?: break).run()
-        val store = store ?: return
         val server = MinecraftServer.getServer() ?: return
+        greetLate(server)
+        val store = store ?: return
         val second = ++ticks % 20 == 0
         if (second && server.currentPlayerCount > 0) activity = true
         val saved = BackupGate.savedThisTick(server.worldServers)

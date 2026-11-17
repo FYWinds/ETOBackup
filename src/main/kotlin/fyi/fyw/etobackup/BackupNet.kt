@@ -46,8 +46,12 @@ object BackupNet {
         channel.registerMessage(ActionHandler::class.java, Action::class.java, 6, Side.SERVER)
     }
 
-    /** Whether [player]'s client has ETOBackup. */
-    fun has(player: EntityPlayerMP): Boolean = player.playerNetServerHandler?.netManager?.let { it in greeted } == true
+    /**
+     * Whether [player]'s client has ETOBackup: it said hello, or it is the owner of a single-player world, whose client
+     * is this game and has it from the start.
+     */
+    fun has(player: EntityPlayerMP): Boolean =
+        player.playerNetServerHandler?.netManager?.let { it in greeted } == true || BackupService.isOwner(player)
 
     private fun writeString(buf: ByteBuf, value: String) = ByteBufUtils.writeUTF8String(buf, value)
 
@@ -213,7 +217,10 @@ object BackupNet {
             val handler = ctx.serverHandler
             greeted += handler.netManager
             val player = handler.playerEntity
-            BackupService.onServerThread { channel.sendTo(BackupService.hello(), player) }
+            BackupService.onServerThread {
+                channel.sendTo(BackupService.hello(), player)
+                BackupService.greeted(player)
+            }
             return null
         }
     }

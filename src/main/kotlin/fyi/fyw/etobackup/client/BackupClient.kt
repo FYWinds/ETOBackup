@@ -104,6 +104,9 @@ object BackupClient {
 
     private val listeners = ArrayList<Runnable>()
 
+    /** Lines that came before the player was in the world (just after joining), shown once it is. Client thread. */
+    private val held = ArrayList<IChatComponent>()
+
     fun register() {
         FMLCommonHandler.instance().bus().register(this)
         MinecraftForge.EVENT_BUS.register(this)
@@ -173,7 +176,8 @@ object BackupClient {
                 line.appendText(" ").appendSibling(link)
             }
         }
-        Minecraft.getMinecraft().thePlayer?.addChatMessage(line)
+        val player = Minecraft.getMinecraft().thePlayer
+        if (player == null) held += line else player.addChatMessage(line)
         // What the line reports changed the list.
         if (listeners.isNotEmpty()) requestList()
         changed()
@@ -231,6 +235,7 @@ object BackupClient {
             stateTime = 0L
             announcedUntil = 0L
             notice = ""
+            held.clear()
             changed()
         }
     }
@@ -242,6 +247,10 @@ object BackupClient {
         if (!greeted && mc.thePlayer != null && mc.netHandler != null) {
             greeted = true
             BackupNet.channel.sendToServer(BackupNet.Hello())
+        }
+        if (held.isNotEmpty() && mc.thePlayer != null) {
+            for (line in held) mc.thePlayer.addChatMessage(line)
+            held.clear()
         }
         if (++ticks % 20 == 0) changed()
     }
