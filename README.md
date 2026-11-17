@@ -6,6 +6,11 @@ Incremental world backups and one-click rollback for Minecraft 1.7.10 servers an
 一个 GTNH（Minecraft 1.7.10）的增量备份模组：服务器和单人世界都能定时做快照，只存变化的部分，一键回档，回档也能撤销。
 [中文说明](#中文说明)见下。
 
+![The backup screen: snapshots by day with a picture of each, the chosen one large with its details and the rollback button](docs/screen.png)
+
+Every snapshot keeps a picture of what was on your screen at that moment, so you can see what you are going back to
+before you roll back.
+
 ## What it does
 
 - Takes a snapshot of the world on a timer (every 15 minutes while players are online), on `/etobackup now`, and
