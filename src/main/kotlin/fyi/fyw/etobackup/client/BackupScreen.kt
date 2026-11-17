@@ -313,7 +313,11 @@ class BackupScreen(private val parent: GuiScreen?) : GuiScreen() {
         state.pending?.let {
             val seconds = it.secondsLeft()
             val world = if (state.singlePlayer) "_world" else ""
-            val key = if (seconds > 0) "etobackup.screen.pending$world" else "etobackup.screen.pending${world}_now"
+            val key = "etobackup.screen.pending$world" + when (seconds) {
+                0 -> "_now"
+                1 -> "_one"
+                else -> ""
+            }
             lines += Line(I18n.format(key, it.by, label(it.target), seconds), YELLOW)
         }
         state.last?.let {
@@ -321,7 +325,8 @@ class BackupScreen(private val parent: GuiScreen?) : GuiScreen() {
             lines += if (it.ok) Line(I18n.format("etobackup.screen.last_ok", time, it.by, label(it.target)), GRAY)
             else Line(I18n.format("etobackup.screen.last_failed", time, it.by, label(it.target), it.message), RED)
         }
-        if (BackupView.notice.isNotEmpty()) lines += Line(BackupView.notice, LIGHT)
+        // During a countdown the server's last line is the countdown the line above already shows.
+        if (state.pending == null && BackupView.notice.isNotEmpty()) lines += Line(BackupView.notice, LIGHT)
         if (!state.canManage) lines += Line(I18n.format("etobackup.screen.no_manage"), GRAY)
         return lines
     }
@@ -329,7 +334,8 @@ class BackupScreen(private val parent: GuiScreen?) : GuiScreen() {
     private fun label(name: String): String = BackupText.snapshot(name) ?: name
 
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
-        drawDefaultBackground()
+        // Opaque: the game and its HUD must not show through.
+        drawRect(0, 0, width, height, BACKDROP)
         val state = state()
         drawString(fontRendererObj, I18n.format("etobackup.screen.title"), MARGIN, MARGIN, WHITE)
 
@@ -556,10 +562,11 @@ class BackupScreen(private val parent: GuiScreen?) : GuiScreen() {
         const val YELLOW = 0xFFFF55
         const val RED = 0xFF5555
         const val GREEN = 0x55FF55
-        const val PANEL = 0x60000000
-        const val SELECTED = 0x40FFFFFF
-        const val HOVER = 0x20FFFFFF
-        const val THUMB_BACK = 0xFF202020.toInt()
+        const val BACKDROP = 0xFF101317.toInt()
+        const val PANEL = 0xFF1D2127.toInt()
+        const val SELECTED = 0xFF3A4150.toInt()
+        const val HOVER = 0xFF292E37.toInt()
+        const val THUMB_BACK = 0xFF0A0B0D.toInt()
         const val SCROLL_TRACK = 0x40000000
         const val SCROLL_BAR = 0xA0C0C0C0.toInt()
     }
