@@ -11,3 +11,6 @@ jobs:
   build-and-test:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     secrets: inherit
+    with:
+      # The workflow's server run uses Java 8; this mod needs Java 17 and cannot load there.
+      client-only: true
